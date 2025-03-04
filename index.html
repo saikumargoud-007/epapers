@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF Viewer with Thumbnails</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+      body {
+        display: flex;
+        font-family: Arial, sans-serif;
+        margin: 0;
+      }
+      #sidebar {
+        width: 200px;
+        height: 100vh;
+        overflow-y: auto;
+        background: #f4f4f4;
+        padding: 10px;
+        border-right: 2px solid #ccc;
+      }
+      #pdf-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      #toolbar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      button {
+        padding: 5px 10px;
+        cursor: pointer;
+        border: none;
+        background: #007bff;
+        color: white;
+        border-radius: 3px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      canvas {
+        border: 1px solid #ddd;
+      }
+      .thumbnail {
+        width: 100%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        margin-bottom: 5px;
+        transition: border 0.2s ease-in-out;
+      }
+      .thumbnail.active {
+        border: 2px solid #007bff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar"></div>
+
+    <div id="pdf-container">
+      <div id="toolbar">
+        <button onclick="prevPage()">⬅ Prev</button>
+        <span
+          >Page <span id="page-num">1</span> /
+          <span id="page-count">?</span></span
+        >
+        <button onclick="nextPage()">Next ➡</button>
+        <button onclick="zoomIn()">🔍+</button>
+        <button onclick="zoomOut()">🔍-</button>
+      </div>
+      <canvas id="pdf-canvas"></canvas>
+    </div>
+
+    <h1 style="color: red">im from online2</h1>
+
+   
+
+    <script>
+      const url =
+        "https://drive.google.com/file/d/10pXho2ZzD0KzbnrPoCExVPjPykcoGSz_/view?usp=drive_link"; // Change this to your PDF file path
+
+      let pdfDoc = null;
+      let canvas = document.getElementById("pdf-canvas");
+      let ctx = canvas.getContext("2d");
+      let currentPage = 1;
+      let zoomLevel = 1.5;
+
+      async function loadPDF() {
+        const loadingTask = pdfjsLib.getDocument(url);
+        pdfDoc = await loadingTask.promise;
+        document.getElementById("page-count").textContent = pdfDoc.numPages;
+
+        let sidebar = document.getElementById("sidebar");
+        sidebar.innerHTML = "";
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+          renderThumbnail(i);
+        }
+
+        renderPage(currentPage);
+      }
+
+      async function renderPage(num) {
+        const page = await pdfDoc.getPage(num);
+        const viewport = page.getViewport({ scale: zoomLevel });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport,
+        };
+        await page.render(renderContext);
+
+        document.getElementById("page-num").textContent = num;
+        highlightThumbnail(num);
+      }
+
+      async function renderThumbnail(num) {
+        const page = await pdfDoc.getPage(num);
+        const scale = 0.3; // Thumbnail size
+        const viewport = page.getViewport({ scale });
+
+        let thumbnailCanvas = document.createElement("canvas");
+        let thumbnailCtx = thumbnailCanvas.getContext("2d");
+        thumbnailCanvas.width = viewport.width;
+        thumbnailCanvas.height = viewport.height;
+        thumbnailCanvas.classList.add("thumbnail");
+        thumbnailCanvas.onclick = () => goToPage(num);
+
+        const renderContext = {
+          canvasContext: thumbnailCtx,
+          viewport,
+        };
+        await page.render(renderContext);
+
+        document.getElementById("sidebar").appendChild(thumbnailCanvas);
+      }
+
+      function highlightThumbnail(activePage) {
+        let thumbnails = document.querySelectorAll(".thumbnail");
+        thumbnails.forEach((thumb, index) => {
+          thumb.classList.toggle("active", index + 1 === activePage);
+        });
+      }
+
+      function goToPage(num) {
+        if (num >= 1 && num <= pdfDoc.numPages) {
+          currentPage = num;
+          renderPage(num);
+        }
+      }
+
+      function prevPage() {
+        if (currentPage > 1) {
+          goToPage(currentPage - 1);
+        }
+      }
+
+      function nextPage() {
+        if (currentPage < pdfDoc.numPages) {
+          goToPage(currentPage + 1);
+        }
+      }
+
+      function zoomIn() {
+        zoomLevel += 0.2;
+        renderPage(currentPage);
+      }
+
+      function zoomOut() {
+        if (zoomLevel > 0.5) {
+          zoomLevel -= 0.2;
+          renderPage(currentPage);
+        }
+      }
+
+      loadPDF();
+    </script>
+  </body>
+</html>
